@@ -1,0 +1,36 @@
+
+1. entry.asm : 引导加载文件,cpu初始化,显存初始化相关
+2. main.c :   entry.asm 内部锁调用main函数 的实现
+3. vgastr.c : main.c 内部所调用的 printf 的实现
+                - : 在字符模式下,控制显卡输出字符
+4. hello.lds :这个文件是依赖,
+        2022-10-24 10:38:27:未知其功能
+
+4. makefile: 
+6. 工具链:
+    1. make :makefile
+    2. nasm :entr.asm --> entry.o 
+    3. gcc : main.c vgastr.c --> *.o
+    4. ld :  hello.lds + entry.o + main.o + vgastr.o -->  hello os.ELF
+    5. objcopy : hello os .elf ->  hellcd os .bin 
+    6. 开始安装
+
+
+
+8: 安装os
+    menuentry 'HelloOS' { 
+        insmod part_msdos  #GRUB 加载分区模块  来识别分区
+        insmod ext2 # GRUB 加载ext文件系统模块 来识别 EXT文件系统
+        set root='hd0,msdos1' #注意boot目录挂载的分区，这是我机器上的情况 
+        multiboot2 /boot/HelloOS.bin  # GRUB 使用该协议来加载 HelloOS.bin
+        boot #GRUB 启动我手写的内核 
+        }
+
+    查看HelloOS.bin所在的磁盘位置:  进行修改  
+                    ==> GRUB命名: hd0,msdos1
+        jie@jie-VirtualBox:~/COSMOS/lesson2/2_代码$ df ./
+        Filesystem     1K-blocks    Used Available Use% Mounted on
+        /dev/sda1       20509264 9330920  10113488  48% /
+    
+9. 注意:
+        后续可能会继续增加功能,所以就基本上 吧编译好的内核 扔到 /boot下

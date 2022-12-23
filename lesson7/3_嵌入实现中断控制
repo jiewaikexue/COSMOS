@@ -1,0 +1,97 @@
+
+
+1. 中断控制: 中断处理代码中如果操作了其它代码的数据，这就需要相应的控制机制了，这样才能保证在操作数据过程中不发生中断
+
+2. 原子操作只适合于单体变量，如整数。操作系统的数据结构有的可能有几百字节大小，其中可能包含多种不同的基本数据类型。这显然用原子操作无法解决。
+
+
+3. x86 中断控制指令: cli,sti指令
+    它们主要是对 CPU 的 eflags 寄存器的 IF 位（第 9 位）进行清除和设置，
+    CPU 正是通过此位来决定是否响应中断信号。
+    这两条指令只能   Ring0 权限才能执行，代码如下。
+
+
+
+==============简单中断控制实现=================
+```c++
+//关闭中断
+void hal_cli()
+{
+    __asm__ __volatile__("cli": : :"memory");
+}
+//开启中断
+void hal_sti()
+{
+    __asm__ __volatile__("sti": : :"memory");
+}
+//使用场景
+void foo()
+{
+    hal_cli(); //函数内嵌汇编的中断控制指令 --> 汇编开启中断
+    //操作数据……
+    hal_sti(); // 汇编关闭中断
+}
+void bar()
+{
+    hal_cli();
+    //操作数据……
+    hal_sti();
+}
+```
+上述代码重大问题: 如下
+
+```
+1.bar关闭中断 
+    ==> 2.foo关闭中断 
+        ==> FOO 处理数据
+    ==>3.foo开启中断 
+    此时中断已开启，但是bar认为中断是关闭的。
+    ===> boo处理数据 (但是,中断是开启的!)(很可能被打断)(复杂数据,在中断环境下,被打断处理
+)(寄!)
+4.bar开启中断
+void foo()
+{
+    hal_cli();
+    //操作数据第一步……
+    hal_sti();
+}
+void bar()
+{
+    hal_cli();
+    foo();
+    //操作数据第二步……
+    hal_sti();
+}
+```
+
+
+```cpp
+typedef u32_t cpuflg_t;
+static inline void hal_save_flags_cli(cpuflg_t* flags)
+{
+     __asm__ __volatile__(
+            "pushfl \t\n" //把eflags寄存器压入当前栈顶
+            "cli    \t\n" //关闭中断
+            "popl %0 \t\n"//把当前栈顶弹出到flags为地址的内存中        
+            : "=m"(*flags)
+            :
+            : "memory"
+          );
+}
+static inline void hal_restore_flags_sti(cpuflg_t* flags)
+{
+    __asm__ __volatile__(
+              "pushl %0 \t\n"//把flags为地址处的值寄存器压入当前栈顶
+              "popfl \t\n"   //把当前栈顶弹出到eflags寄存器中
+              :
+              : "m"(*flags)
+              : "memory"
+              );
+}
+```
+
+
+用法是需要使用者定义一个flag变量存储当前eflags的状态，
+恢复的时候用这个定义的flag恢复。
+
+=====>  可重入!

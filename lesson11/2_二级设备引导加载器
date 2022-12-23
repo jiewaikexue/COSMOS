@@ -1,0 +1,45 @@
+
+
+1. 2级设备引导加载器,主要是干什么的?
+
+    二级引导器作为操作系统的先驱，它需要收集机器信息，确定这个计算机能不能运行我们的操作系统，对 CPU、内存、显卡进行一些初级的配置，放置好内核相关的文件。
+
+2. 从哪里收集机器信息?收集的信息放到哪里去?
+    1> 通过汇编指令, 检查相关内存地址,或者寄存器信息
+        --> 来逐步 收集各种各样的信息
+        ==> 收集cpu
+        ==> 收集内存
+        ==> 获取内核栈
+        ==> 建立mmu页表
+        ==> 设置图形模式
+    2> 放到哪里去?
+        将收集来的信息,存放到一个事先设计好的结构体中
+        Cosmos/initldr/include/ldrtype.h
+        节选重要信息
+        ```
+
+typedef struct s_MACHBSTART
+{
+    u64_t   mb_krlinitstack;//内核栈地址
+    u64_t   mb_krlitstacksz;//内核栈大小
+    u64_t   mb_imgpadr;//操作系统映像
+    u64_t   mb_imgsz;//操作系统映像大小
+    u64_t   mb_bfontpadr;//操作系统字体地址
+    u64_t   mb_bfontsz;//操作系统字体大小
+    u64_t   mb_fvrmphyadr;//机器显存地址
+    u64_t   mb_fvrmsz;//机器显存大小
+    u64_t   mb_cpumode;//机器CPU工作模式
+    u64_t   mb_memsz;//机器内存大小
+    u64_t   mb_e820padr;//机器e820数组地址
+    u64_t   mb_e820nr;//机器e820数组元素个数
+    u64_t   mb_e820sz;//机器e820数组大小
+    //……
+    u64_t   mb_pml4padr;//机器页表数据地址
+    u64_t   mb_subpageslen;//机器页表个数
+    u64_t   mb_kpmapphymemsz;//操作系统映射空间大小
+    //……
+    graph_t mb_ghparm;//图形信息
+}__attribute__((packed)) machbstart_t;
+```
+
+为什么要加载到0x7C00? 历史遗留问题
